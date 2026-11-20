@@ -125,7 +125,7 @@
         }
 
         /* Sorotan Sederhana Baris/Kolom yang Akan Hancur */
-        .board-cell.will-clear {
+        .board-cell.will-clear, .block-tile.will-clear {
             filter: brightness(1.3);
             outline: 2px solid #ffffff;
             outline-offset: -2px;
@@ -231,17 +231,17 @@
             gap: clamp(10px, 2.5dvh, 20px);
         }
 
-        body > .w-full.max-w-\[420px\]:first-of-type {
+        #hud-bar {
             padding: 4px 2px 0;
         }
 
-        body > .w-full.max-w-\[420px\]:first-of-type > div:first-child,
-        body > .w-full.max-w-\[420px\]:first-of-type > div:nth-child(2) {
+        #hud-bar > div:first-child,
+        #hud-bar > div:nth-child(2) {
             color: var(--text-primary) !important;
         }
 
-        body > .w-full.max-w-\[420px\]:first-of-type .text-\[10px\],
-        body > .w-full.max-w-\[420px\]:first-of-type #hud-best-label {
+        #hud-bar .text-\[10px\],
+        #hud-bar #hud-best-label {
             color: var(--text-secondary) !important;
             letter-spacing: 0.12em;
         }
@@ -328,6 +328,10 @@
             opacity: 0.28;
         }
 
+        .dock-slot.dragging {
+            opacity: 0.3;
+        }
+
         #mode-menu, #levelclear-modal, #restart-modal, #install-guide-modal, #gameover-modal {
             background: rgba(5, 10, 20, 0.78) !important;
             backdrop-filter: blur(12px);
@@ -405,7 +409,7 @@
         }
 
         @media (max-width: 420px) {
-            body > .w-full.max-w-\[420px\]:first-of-type {
+            #hud-bar {
                 padding-inline: 2px;
             }
             #board {
@@ -429,7 +433,7 @@
     <!-- Lapisan Balok Melayang Saat Diseret -->
     <div id="drag-piece" class="hidden"></div>
 
-    <div class="w-full max-w-[420px] flex items-center justify-between">
+    <div id="hud-bar" class="w-full max-w-[420px] flex items-center justify-between">
         <div><div class="text-[10px] uppercase font-semibold text-[#686d76]">Skor</div><div id="hud-score" class="text-2xl font-extrabold">0</div></div>
         <div class="text-center"><div id="hud-best-label" class="text-[10px] uppercase font-semibold text-[#686d76]">Terbaik</div><div id="hud-best" class="text-lg font-bold">0</div></div>
         <div class="flex gap-2">
@@ -585,15 +589,19 @@
     if(dp){dp.prompt();await dp.userChoice;dp=null}else{g.classList.remove('hidden');g.classList.add('flex')}
   };
   document.getElementById('btn-close-install-guide').onclick=()=>{g.classList.add('hidden');g.classList.remove('flex')};
-  if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+  if('serviceWorker' in navigator)window.addEventListener('load',()=>{
+    const hadController=!!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    if(hadController)navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload());
+  });
 })();
     </script>
     <script>
 (function(){
-const $=id=>document.getElementById(id),N=8,PAD=6,GAP=2;
+const $=id=>document.getElementById(id),N=8;
 const show=e=>{e.classList.remove('hidden');e.classList.add('flex')},hide=e=>{e.classList.add('hidden');e.classList.remove('flex')};
 const COL=['cyan','amber','rose','emerald','violet','blue','orange'];
-const HEX={cyan:'#2b9eb3',amber:'#e09f3e',rose:'#d9534f',emerald:'#3fa36c',violet:'#7e6bc4',blue:'#467fd0',orange:'#e07a3d'};
+const HEX={cyan:'#25c6d9',amber:'#f5b84b',rose:'#ff6470',emerald:'#47d18a',violet:'#9d83ff',blue:'#5d9bff',orange:'#ff8a4c'};
 const norm=s=>{const a=Math.min(...s.map(p=>p[0])),b=Math.min(...s.map(p=>p[1]));return s.map(p=>[p[0]-a,p[1]-b])};
 const rot=s=>norm(s.map(([r,c])=>[c,-r]));
 const rect=(h,w)=>{const a=[];for(let r=0;r<h;r++)for(let c=0;c<w;c++)a.push([r,c]);return a};
@@ -607,7 +615,14 @@ let mode='classic',board,dock,score=0,over=false,busy=false,drag=null,best=ls.ge
 const stars=()=>board.flat().filter(v=>v&&v.s).length;
 const can=(s,r,c)=>s.every(([a,b])=>{const y=r+a,x=c+b;return y>=0&&x>=0&&y<N&&x<N&&!board[y][x]});
 const fits=p=>{for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(can(p.s,r,c))return true;return false};
-function metrics(){const w=$('board').getBoundingClientRect();const cell=(w.width-PAD*2-GAP*(N-1))/N;return{r:w,cell,pitch:cell+GAP}}
+function metrics(){
+  const b=$('board'),w=b.getBoundingClientRect(),cs=getComputedStyle(b);
+  const pl=parseFloat(cs.paddingLeft)||0,pt=parseFloat(cs.paddingTop)||0;
+  const bl=parseFloat(cs.borderLeftWidth)||0,bt=parseFloat(cs.borderTopWidth)||0;
+  const gap=parseFloat(cs.columnGap)||0;
+  const cell=(w.width-bl-(parseFloat(cs.borderRightWidth)||0)-pl*2-gap*(N-1))/N;
+  return{r:w,cell,pitch:cell+gap,ox:bl+pl,oy:bt+pt,gap};
+}
 function newGame(){
   board=Array.from({length:N},()=>Array(N).fill(null));score=0;over=false;busy=false;
   if(mode==='level'){
@@ -619,15 +634,27 @@ function newGame(){
   dock=[null,null,null];refill();render();hud();
 }
 function refill(){dock=dock.map(()=>({s:SH[Math.random()*SH.length|0],k:COL[Math.random()*7|0]}))}
-function render(ghost,clr){
-  const b=$('board');b.innerHTML='';
-  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
-    const d=document.createElement('div'),v=board[r][c],id=r*N+c;
-    if(v){d.className='block-tile color-'+v.k;if(v.s)d.innerHTML='<span class="star-icon">★</span>'}
-    else{d.className='board-cell';if(ghost&&ghost.has(id)){d.classList.add('ghost-valid');d.style.backgroundColor=HEX[drag.p.k]}}
-    if(clr&&clr.has(id))d.classList.add('will-clear');
-    b.appendChild(d);
+let cellEls=[];
+function paint(ghost,clr){
+  for(let i=0;i<cellEls.length;i++){
+    const d=cellEls[i],empty=!board[i/N|0][i%N];
+    if(empty){
+      const on=!!(ghost&&ghost.has(i));
+      d.classList.toggle('ghost-valid',on);
+      d.style.backgroundColor=on?HEX[drag.p.k]:'';
+    }
+    d.classList.toggle('will-clear',!!(clr&&clr.has(i)));
   }
+}
+function render(ghost,clr){
+  const b=$('board');b.innerHTML='';cellEls=[];
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const d=document.createElement('div'),v=board[r][c];
+    if(v){d.className='block-tile color-'+v.k;if(v.s)d.innerHTML='<span class="star-icon">★</span>'}
+    else d.className='board-cell';
+    b.appendChild(d);cellEls.push(d);
+  }
+  if(ghost)paint(ghost,clr);
   dock.forEach((p,i)=>{
     const el=$('dock-'+i);el.classList.toggle('disabled-piece',!!p&&!fits(p));
     if(!p){el.innerHTML='';return}
@@ -653,29 +680,32 @@ function popup(t){
 }
 function dragMove(e){
   if(!drag)return;
-  const m=metrics(),[h,w]=sz(drag.p.s),pieceW=w*m.cell+(w-1)*GAP,pieceH=h*m.cell+(h-1)*GAP,left=e.clientX-pieceW/2,top=e.clientY-pieceH/2;
+  const m=drag.m, [h,w]=sz(drag.p.s),pieceW=w*m.cell+(w-1)*m.gap,pieceH=h*m.cell+(h-1)*m.gap,left=e.clientX-pieceW/2,top=e.clientY-pieceH/2;
   $('drag-piece').style.transform='translate('+left+'px,'+top+'px)';
-  const c=Math.round((left-m.r.left-PAD)/m.pitch),r=Math.round((top-m.r.top-PAD)/m.pitch);
+  const c=Math.round((left-m.r.left-m.ox)/m.pitch),r=Math.round((top-m.r.top-m.oy)/m.pitch),key=r+','+c;
+  if(drag.key===key)return;
+  drag.key=key;
   if(can(drag.p.s,r,c)){
     drag.pos=[r,c];
     const g=new Set(drag.p.s.map(([a,b])=>(r+a)*N+c+b));
-    render(g,lines((y,x)=>board[y][x]||g.has(y*N+x)).set);
-  }else{drag.pos=null;render()}
+    paint(g,lines((y,x)=>board[y][x]||g.has(y*N+x)).set);
+  }else{drag.pos=null;paint()}
 }
 function dragEnd(e){
   window.removeEventListener('pointermove',dragMove);window.removeEventListener('pointerup',dragEnd);window.removeEventListener('pointercancel',dragEnd);
-  hide($('drag-piece'));$('drag-piece').style.display='none';$('drag-piece').classList.add('hidden');
   const d=drag;drag=null;
-  if(d&&d.pos)place(d);else render();
+  const dp=$('drag-piece');dp.style.display='none';hide(dp);
+  document.querySelectorAll('.dock-slot').forEach(el=>el.classList.remove('dragging'));
+  if(d&&d.pos&&e.type!=='pointercancel')place(d);else render();
 }
 document.querySelectorAll('.dock-slot').forEach((el,i)=>el.addEventListener('pointerdown',e=>{
-  const p=dock[i];if(!p||busy||over)return;
+  const p=dock[i];if(drag||!p||busy||over)return;
   e.preventDefault();beep(520,.05);
   const m=metrics(),[h,w]=sz(p.s),d=$('drag-piece');
-  drag={i,p,pos:null};
-  d.style.gap=GAP+'px';d.style.gridTemplateColumns='repeat('+w+','+m.cell+'px)';
+  drag={i,p,pos:null,key:null,m};
+  d.style.gap=m.gap+'px';d.style.gridTemplateColumns='repeat('+w+','+m.cell+'px)';
   d.innerHTML=p.s.map(([r,c])=>'<div class="block-tile color-'+p.k+'" style="grid-row:'+(r+1)+';grid-column:'+(c+1)+';width:'+m.cell+'px;height:'+m.cell+'px"></div>').join('');
-  d.classList.remove('hidden');d.style.display='grid';
+  d.classList.remove('hidden');d.style.display='grid';el.classList.add('dragging');
   window.addEventListener('pointermove',dragMove);window.addEventListener('pointerup',dragEnd);window.addEventListener('pointercancel',dragEnd);
   dragMove(e);
 }));
@@ -692,6 +722,7 @@ async function place(d){
     const pts=set.size*n;score+=pts;popup('+'+pts+(n>1?' kombo x'+n:''));beep(600+n*90,.22,'triangle');
   }
   if(dock.every(x=>!x))refill();
+  if(mode==='classic'&&score>best){best=score;ls.set('dolvin_best',best)}
   busy=false;render();hud();check();
 }
 function check(){
