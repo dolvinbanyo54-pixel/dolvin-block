@@ -179,7 +179,7 @@
             z-index: 50;
             display: grid;
             will-change: transform;
-            filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.3));
+            backface-visibility: hidden;
         }
 
         #board { flex:0 0 auto; touch-action:none; }
@@ -636,15 +636,12 @@ function newGame(){
 function refill(){dock=dock.map(()=>({s:SH[Math.random()*SH.length|0],k:COL[Math.random()*7|0]}))}
 let cellEls=[];
 function paint(ghost,clr){
-  for(let i=0;i<cellEls.length;i++){
-    const d=cellEls[i],empty=!board[i/N|0][i%N];
-    if(empty){
-      const on=!!(ghost&&ghost.has(i));
-      d.classList.toggle('ghost-valid',on);
-      d.style.backgroundColor=on?HEX[drag.p.k]:'';
-    }
-    d.classList.toggle('will-clear',!!(clr&&clr.has(i)));
-  }
+  const pg=drag.lastG,pc=drag.lastC;
+  if(pg)pg.forEach(i=>{if(!ghost||!ghost.has(i)){const d=cellEls[i];if(d){d.classList.remove('ghost-valid');d.style.backgroundColor=''}}});
+  if(pc)pc.forEach(i=>{if(!clr||!clr.has(i)){const d=cellEls[i];if(d)d.classList.remove('will-clear')}});
+  if(ghost)ghost.forEach(i=>{if(!pg||!pg.has(i)){const d=cellEls[i];if(d){d.classList.add('ghost-valid');d.style.backgroundColor=HEX[drag.p.k]}}});
+  if(clr)clr.forEach(i=>{if(!pc||!pc.has(i)){const d=cellEls[i];if(d)d.classList.add('will-clear')}});
+  drag.lastG=ghost;drag.lastC=clr;
 }
 function render(ghost,clr){
   const b=$('board');b.innerHTML='';cellEls=[];
@@ -680,8 +677,8 @@ function popup(t){
 }
 function dragMove(e){
   if(!drag)return;
-  const m=drag.m, [h,w]=sz(drag.p.s),pieceW=w*m.cell+(w-1)*m.gap,pieceH=h*m.cell+(h-1)*m.gap,left=e.clientX-pieceW/2,top=e.clientY-pieceH/2;
-  $('drag-piece').style.transform='translate('+left+'px,'+top+'px)';
+  const m=drag.m,left=e.clientX-drag.pw/2,top=e.clientY-drag.ph/2;
+  drag.el.style.transform='translate3d('+left+'px,'+top+'px,0)';
   const c=Math.round((left-m.r.left-m.ox)/m.pitch),r=Math.round((top-m.r.top-m.oy)/m.pitch),key=r+','+c;
   if(drag.key===key)return;
   drag.key=key;
@@ -692,7 +689,7 @@ function dragMove(e){
   }else{drag.pos=null;paint()}
 }
 function dragEnd(e){
-  window.removeEventListener('pointermove',dragMove);window.removeEventListener('pointerup',dragEnd);window.removeEventListener('pointercancel',dragEnd);
+  window.removeEventListener('pointermove',dragMove);window.removeEventListener('pointerrawupdate',dragMove);window.removeEventListener('pointerup',dragEnd);window.removeEventListener('pointercancel',dragEnd);
   const d=drag;drag=null;
   const dp=$('drag-piece');dp.style.display='none';hide(dp);
   document.querySelectorAll('.dock-slot').forEach(el=>el.classList.remove('dragging'));
@@ -702,11 +699,11 @@ document.querySelectorAll('.dock-slot').forEach((el,i)=>el.addEventListener('poi
   const p=dock[i];if(drag||!p||busy||over)return;
   e.preventDefault();beep(520,.05);
   const m=metrics(),[h,w]=sz(p.s),d=$('drag-piece');
-  drag={i,p,pos:null,key:null,m};
+  drag={i,p,pos:null,key:null,m,el:d,pw:w*m.cell+(w-1)*m.gap,ph:h*m.cell+(h-1)*m.gap,lastG:null,lastC:null};
   d.style.gap=m.gap+'px';d.style.gridTemplateColumns='repeat('+w+','+m.cell+'px)';
   d.innerHTML=p.s.map(([r,c])=>'<div class="block-tile color-'+p.k+'" style="grid-row:'+(r+1)+';grid-column:'+(c+1)+';width:'+m.cell+'px;height:'+m.cell+'px"></div>').join('');
   d.classList.remove('hidden');d.style.display='grid';el.classList.add('dragging');
-  window.addEventListener('pointermove',dragMove);window.addEventListener('pointerup',dragEnd);window.addEventListener('pointercancel',dragEnd);
+  window.addEventListener('pointermove',dragMove);window.addEventListener('pointerrawupdate',dragMove);window.addEventListener('pointerup',dragEnd);window.addEventListener('pointercancel',dragEnd);
   dragMove(e);
 }));
 async function place(d){
