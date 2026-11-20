@@ -557,12 +557,88 @@
             font-size: 0.72rem;
             text-align: center;
         }
+
+        #skill-tray {
+            width: min(92vw, 420px);
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            min-height: 0;
+        }
+
+        #skill-tray.empty {
+            display: none;
+        }
+
+        .skill-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 38px;
+            padding: 7px 10px;
+            border: 1px solid rgba(200, 243, 107, 0.3);
+            border-radius: 12px;
+            background: rgba(200, 243, 107, 0.08);
+            color: var(--text-primary);
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.14);
+        }
+
+        .skill-chip:active {
+            cursor: grabbing;
+            transform: scale(0.96);
+        }
+
+        .skill-chip-icon {
+            font-size: 1rem;
+        }
+
+        .skill-chip-count {
+            color: var(--accent);
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        #skill-drag {
+            position: fixed;
+            z-index: 60;
+            pointer-events: none;
+            display: grid;
+            place-items: center;
+            width: 52px;
+            height: 52px;
+            border: 2px solid var(--accent);
+            border-radius: 16px;
+            background: rgba(18, 28, 47, 0.92);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.3), 0 0 24px var(--glow);
+            font-size: 1.7rem;
+            will-change: transform;
+        }
+
+        .skill-preview {
+            outline: 2px solid var(--accent) !important;
+            outline-offset: -2px;
+            filter: brightness(1.35);
+            z-index: 6;
+        }
+
+        @media (max-width: 420px) {
+            #skill-tray {
+                gap: 5px;
+            }
+            .skill-chip {
+                padding-inline: 8px;
+            }
+        }
     </style>
 </head>
 <body class="flex flex-col items-center px-3">
 
     <!-- Lapisan Balok Melayang Saat Diseret -->
     <div id="drag-piece" class="hidden"></div>
+    <div id="skill-drag" class="hidden"></div>
 
     <div id="hud-bar" class="w-full max-w-[420px] flex items-center justify-between">
         <div>
@@ -583,6 +659,7 @@
         <div id="dock-1" class="dock-slot"></div>
         <div id="dock-2" class="dock-slot"></div>
     </div>
+    <div id="skill-tray" class="empty" aria-label="Kemampuan yang dimiliki"></div>
 
 
     <!-- Toko kemampuan -->
@@ -603,7 +680,7 @@
                     <button id="skill-hammer-buy" class="skill-action">Beli</button><button id="skill-hammer-action" class="skill-action use">Pakai</button>
                 </div>
                 <div class="skill-card">
-                    <div class="skill-icon">⚡</div><div class="skill-copy"><div class="skill-name">Petir</div><div class="skill-description">Hapus satu baris dan kolom.</div><div class="skill-meta">5 coin · Dimiliki: <span id="skill-lightning-count">0</span></div></div>
+                    <div class="skill-icon">⚡</div><div class="skill-copy"><div class="skill-name">Petir</div><div class="skill-description">Hapus satu baris horizontal.</div><div class="skill-meta">5 coin · Dimiliki: <span id="skill-lightning-count">0</span></div></div>
                     <button id="skill-lightning-buy" class="skill-action">Beli</button><button id="skill-lightning-action" class="skill-action use">Pakai</button>
                 </div>
                 <div class="skill-card">
@@ -779,11 +856,11 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const readNum=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:Number(v)}catch(e){return d}};
 const SKILLS={
   hammer:{name:'Palu',icon:'🔨',price:1,description:'Hapus satu balok yang mengganggu.'},
-  lightning:{name:'Petir',icon:'⚡',price:5,description:'Hapus satu baris dan satu kolom.'},
+  lightning:{name:'Petir',icon:'⚡',price:5,description:'Hapus satu baris horizontal.'},
   bomb:{name:'Bom',icon:'💣',price:10,description:'Hancurkan area 3 × 3.'}
 };
 let mode='classic',board,dock,score=0,over=false,busy=false,drag=null,best=ls.get('dolvin_best',0),level=ls.get('dolvin_level',1);
-let coins=readNum('dolvin_coins',999999),activeSkill=null;
+let coins=readNum('dolvin_coins',999999),activeSkill=null,skillDrag=null;
 const inventory={hammer:readNum('dolvin_hammer',0),lightning:readNum('dolvin_lightning',0),bomb:readNum('dolvin_bomb',0)};
 const stars=()=>board.flat().filter(v=>v&&v.s).length;
 const can=(s,r,c)=>s.every(([a,b])=>{const y=r+a,x=c+b;return y>=0&&x>=0&&y<N&&x<N&&!board[y][x]});
@@ -889,6 +966,54 @@ $('board').addEventListener('pointerdown',e=>{
 });
 
 function saveInventory(id){ls.set('dolvin_'+id,inventory[id])}
+function renderSkillTray(){
+  const tray=$('skill-tray');if(!tray)return;
+  const owned=Object.entries(SKILLS).filter(([id])=>inventory[id]>0);
+  tray.classList.toggle('empty',owned.length===0);
+  tray.innerHTML=owned.map(([id,s])=>'<button class="skill-chip" data-skill="'+id+'" aria-label="Geser '+s.name+' ke papan"><span class="skill-chip-icon">'+s.icon+'</span><span>'+s.name+'</span><span class="skill-chip-count">×'+inventory[id]+'</span></button>').join('');
+  tray.querySelectorAll('.skill-chip').forEach(el=>el.addEventListener('pointerdown',startSkillDrag));
+}
+function startSkillDrag(e){
+  const id=e.currentTarget.dataset.skill;
+  if(!id||inventory[id]<=0||busy||over)return;
+  e.preventDefault();
+  skillDrag={id,moved:false,pos:null};
+  window.addEventListener('pointermove',skillDragMove);
+  window.addEventListener('pointerup',endSkillDrag);
+  window.addEventListener('pointercancel',endSkillDrag);
+}
+function skillDragMove(e){
+  if(!skillDrag)return;
+  const dx=e.clientX-(skillDrag.startX??e.clientX),dy=e.clientY-(skillDrag.startY??e.clientY);
+  if(skillDrag.startX===undefined){skillDrag.startX=e.clientX;skillDrag.startY=e.clientY}
+  if(!skillDrag.moved&&Math.hypot(dx,dy)<6)return;
+  skillDrag.moved=true;
+  const ghost=$('skill-drag');ghost.classList.remove('hidden');ghost.textContent=SKILLS[skillDrag.id].icon;
+  ghost.style.transform='translate3d('+(e.clientX-26)+'px,'+(e.clientY-26)+'px,0)';
+  clearSkillPreview();
+  skillDrag.pos=boardCellFromEvent(e);
+  if(skillDrag.pos){
+    const[r,c]=skillDrag.pos,ids=[];
+    if(skillDrag.id==='lightning'){for(let x=0;x<N;x++)ids.push(r*N+x)}
+    else if(skillDrag.id==='bomb'){for(let y=Math.max(0,r-1);y<=Math.min(N-1,r+1);y++)for(let x=Math.max(0,c-1);x<=Math.min(N-1,c+1);x++)ids.push(y*N+x)}
+    else ids.push(r*N+c);
+    ids.forEach(i=>cellEls[i]?.classList.add('skill-preview'));
+  }
+}
+function clearSkillPreview(){cellEls.forEach(d=>d.classList.remove('skill-preview'))}
+function endSkillDrag(e){
+  if(!skillDrag)return;
+  window.removeEventListener('pointermove',skillDragMove);
+  window.removeEventListener('pointerup',endSkillDrag);
+  window.removeEventListener('pointercancel',endSkillDrag);
+  const d=skillDrag;skillDrag=null;
+  $('skill-drag').classList.add('hidden');clearSkillPreview();
+  if(d.moved&&d.pos){
+    activeSkill=d.id;useSkillAt(e);
+  }else if(!d.moved){
+    selectSkill(d.id);
+  }
+}
 function updateShop(){
   const balance=$('shop-coin-balance');
   if(balance)balance.textContent=coins.toLocaleString('id-ID');
@@ -900,6 +1025,7 @@ function updateShop(){
     button.classList.toggle('use',activeSkill===id);
     button.disabled=inventory[id]<=0;
   });
+  renderSkillTray();
 }
 function buySkill(id){
   const s=SKILLS[id];
@@ -934,8 +1060,7 @@ function useSkillAt(e){
     removed.add(r*N+c);
   }else if(id==='lightning'){
     for(let x=0;x<N;x++)if(board[r][x])removed.add(r*N+x);
-    for(let y=0;y<N;y++)if(board[y][c])removed.add(y*N+c);
-    if(!removed.size){popup('Pilih area yang terisi');return}
+    if(!removed.size){popup('Pilih balok di baris itu');return}
   }else if(id==='bomb'){
     for(let y=Math.max(0,r-1);y<=Math.min(N-1,r+1);y++)for(let x=Math.max(0,c-1);x<=Math.min(N-1,c+1);x++)if(board[y][x])removed.add(y*N+x);
     if(!removed.size){popup('Pilih area yang terisi');return}
