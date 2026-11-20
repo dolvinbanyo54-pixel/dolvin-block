@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DOLVIN BLOCK</title>
+    <!-- Konfigurasi PWA agar bisa di-install di layar utama HP -->
+    <meta name="theme-color" content="#efece6">
+    <meta name="application-name" content="DOLVIN BLOCK">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="DOLVIN BLOCK">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <!-- Tailwind CSS untuk tata letak responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #efece6;
+            --surface: #ffffff;
+            --border-subtle: #d6d1c7;
+            --text-primary: #23262b;
+            --text-secondary: #686d76;
+            --board-bg: #32363f;
+            --cell-empty: #24272e;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            background-color: var(--bg-main);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
+            touch-action: none;
+        }
+
+        /* Gaya Balok Klasik Sederhana dengan Bevel Tipis */
+        .block-tile {
+            border-radius: 5px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease;
+        }
+
+        .block-tile::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            border-top: 2px solid rgba(255, 255, 255, 0.35);
+            border-left: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            pointer-events: none;
+        }
+
+        /* Palet Warna Klasik */
+        .color-cyan    { background-color: #2b9eb3; border: 1px solid #1f7a8c; }
+        .color-amber   { background-color: #e09f3e; border: 1px solid #b87d24; }
+        .color-rose    { background-color: #d9534f; border: 1px solid #b53b37; }
+        .color-emerald { background-color: #3fa36c; border: 1px solid #2d7d51; }
+        .color-violet  { background-color: #7e6bc4; border: 1px solid #5f4ea3; }
+        .color-blue    { background-color: #467fd0; border: 1px solid #3261a8; }
+        .color-orange  { background-color: #e07a3d; border: 1px solid #b85d27; }
+
+        /* Ikon Bintang Target di Mode Tingkatan */
+        .star-icon {
+            color: #fff8dc;
+            font-size: 0.95rem;
+            line-height: 1;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Sel Papan Kosong */
+        .board-cell {
+            background-color: var(--cell-empty);
+            border-radius: 4px;
+            position: relative;
+        }
+
+        /* Pratinjau Bayangan Penempatan */
+        .board-cell.ghost-valid {
+            opacity: 0.45;
+        }
+
+        /* Sorotan Sederhana Baris/Kolom yang Akan Hancur */
+        .board-cell.will-clear {
+            filter: brightness(1.3);
+            outline: 2px solid #ffffff;
+            outline-offset: -2px;
+            z-index: 5;
+        }
+
+        /* Animasi Muncul & Hancur Klasik */
+        @keyframes popIn {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in {
+            animation: popIn 0.2s ease-out forwards;
+        }
+
+        @keyframes clearFade {
+            0% { transform: scale(1.05); filter: brightness(1.6); opacity: 1; }
+            100% { transform: scale(0.4); opacity: 0; }
+        }
+        .animate-clear {
+            animation: clearFade 0.24s ease-out forwards;
+        }
+
+        /* Teks Skor Melayang Sederhana */
+        @keyframes floatUp {
+            0% { transform: translate(-50%, 0); opacity: 1; }
+            100% { transform: translate(-50%, -36px); opacity: 0; }
+        }
+        .floating-popup {
+            position: absolute;
+            pointer-events: none;
+            z-index: 40;
+            font-weight: 700;
+            color: #ffffff;
+            background: rgba(35, 38, 43, 0.88);
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            animation: floatUp 0.75s ease-out forwards;
+            white-space: nowrap;
+        }
+
+        /* Lapisan Balok Saat Diseret */
+        #drag-piece {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 50;
+            display: grid;
+            will-change: transform;
+            filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.3));
+        }
+
+        /* Slot Balok di Bawah */
+        .dock-slot {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background-color: var(--surface);
+            border: 1px solid var(--border-subtle);
+            cursor: grab;
+        }
+        .dock-slot:active {
+            cursor: grabbing;
+        }
+        .dock-slot.disabled-piece {
+            opacity: 0.38;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-between py-3 px-3 sm:py-5">
+
+    <!-- Lapisan Balok Melayang Saat Diseret -->
+    <div id="drag-piece" class="hidden"></div>
+
+    <div class="w-full max-w-[420px] flex items-center justify-between">
+        <div><div class="text-[10px] uppercase font-semibold text-[#686d76]">Skor</div><div id="hud-score" class="text-2xl font-extrabold">0</div></div>
+        <div class="text-center"><div id="hud-best-label" class="text-[10px] uppercase font-semibold text-[#686d76]">Terbaik</div><div id="hud-best" class="text-lg font-bold">0</div></div>
+        <div class="flex gap-2">
+            <button id="btn-restart" class="w-10 h-10 rounded-xl bg-white border border-[#d6d1c7] font-bold">↻</button>
+            <button id="btn-menu" class="w-10 h-10 rounded-xl bg-white border border-[#d6d1c7] font-bold">☰</button>
+        </div>
+    </div>
+    <div id="board" class="grid rounded-xl bg-[#32363f]" style="width:min(92vw,46vh,420px);aspect-ratio:1;padding:6px;gap:2px;grid-template-columns:repeat(8,1fr)"></div>
+    <div class="w-full max-w-[420px] grid grid-cols-3 gap-2">
+        <div id="dock-0" class="dock-slot" style="height:110px"></div>
+        <div id="dock-1" class="dock-slot" style="height:110px"></div>
+        <div id="dock-2" class="dock-slot" style="height:110px"></div>
+    </div>
+
+
+    <!-- Layar Pilih Mode Awal (Klasik vs Tingkatan) -->
+    <div id="mode-menu" class="fixed inset-0 z-50 flex items-center justify-center bg-[#efece6] p-4">
+        <div class="w-full max-w-sm bg-white border border-[#d6d1c7] rounded-2xl p-6 shadow-sm text-center">
+            <!-- Ikon Grid Klasik -->
+            <div class="w-14 h-14 mx-auto mb-3 grid grid-cols-2 gap-1 p-2 rounded-xl bg-[#32363f]">
+                <div class="rounded-sm bg-[#467fd0]"></div>
+                <div class="rounded-sm bg-[#e09f3e]"></div>
+                <div class="rounded-sm bg-[#3fa36c]"></div>
+                <div class="rounded-sm bg-[#d9534f]"></div>
+            </div>
+
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#23262b]">DOLVIN BLOCK</h1>
+            <p class="text-xs sm:text-sm text-[#686d76] mt-1 mb-6">Pilih mode permainan yang ingin dimainkan</p>
+
+            <div class="space-y-3 text-left">
+                <!-- Pilihan 1: Mode Klasik -->
+                <button id="select-classic" class="w-full p-4 rounded-xl border-2 border-[#d6d1c7] hover:border-[#32363f] bg-[#faf9f6] hover:bg-white active:scale-[0.99] transition flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-base sm:text-lg text-[#23262b]">Mode Klasik</div>
+                        <div class="text-xs text-[#686d76] mt-0.5">Permainan tanpa batas, kejar skor tertinggi</div>
+                    </div>
+                    <div class="text-right shrink-0 ml-3">
+                        <div class="text-[10px] uppercase font-semibold text-[#686d76]">Terbaik</div>
+                        <div id="menu-best-score" class="text-sm font-bold text-[#23262b]">0</div>
+                    </div>
+                </button>
+
+                <!-- Pilihan 2: Mode Tingkatan -->
+                <button id="select-level" class="w-full p-4 rounded-xl border-2 border-[#d6d1c7] hover:border-[#32363f] bg-[#faf9f6] hover:bg-white active:scale-[0.99] transition flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-base sm:text-lg text-[#23262b]">Mode Tingkatan</div>
+                        <div class="text-xs text-[#686d76] mt-0.5">Kumpulkan semua balok bintang (★) tiap tingkat</div>
+                    </div>
+                    <div class="text-right shrink-0 ml-3">
+                        <div class="text-[10px] uppercase font-semibold text-[#686d76]">Progres</div>
+                        <div id="menu-current-level" class="text-sm font-bold text-[#3fa36c]">Tingkat 1</div>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Tombol Install Aplikasi ke HP -->
+            <div id="install-section" class="mt-5 pt-4 border-t border-[#d6d1c7]">
+                <button id="btn-install-app" class="w-full py-2.5 px-4 rounded-xl bg-[#32363f] hover:bg-[#23262b] active:scale-[0.99] text-white font-semibold text-xs sm:text-sm transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Install Aplikasi di HP</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tingkat Selesai (Khusus Mode Tingkatan) -->
+    <div id="levelclear-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+        <div class="w-full max-w-xs bg-white border border-[#d6d1c7] rounded-2xl p-6 text-center shadow-lg">
+            <div class="text-3xl mb-2 text-[#e09f3e]">★</div>
+            <h2 id="levelclear-title" class="text-xl sm:text-2xl font-bold text-[#23262b] mb-1">Tingkat 1 Selesai!</h2>
+            <p class="text-xs sm:text-sm text-[#686d76] mb-5">Semua target bintang berhasil dikumpulkan.</p>
+
+            <div class="bg-[#faf9f6] rounded-xl p-3 border border-[#d6d1c7] mb-5">
+                <div class="text-[10px] uppercase text-[#686d76] font-semibold">Skor Tingkat</div>
+                <div id="levelclear-score" class="text-2xl font-bold text-[#23262b] mt-0.5">0</div>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <button id="btn-next-level" class="w-full py-3 px-4 rounded-xl bg-[#3fa36c] hover:bg-[#338a5a] active:scale-95 text-white font-bold text-sm sm:text-base transition">
+                    Tingkat Berikutnya
+                </button>
+                <button id="btn-levelclear-menu" class="w-full py-2.5 px-4 rounded-xl bg-[#faf9f6] hover:bg-stone-100 border border-[#d6d1c7] text-[#23262b] font-semibold text-xs sm:text-sm transition">
+                    Menu Mode
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Mulai Ulang -->
+    <div id="restart-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+        <div class="w-full max-w-xs bg-white border border-[#d6d1c7] rounded-2xl p-5 text-center shadow-lg">
+            <h3 class="text-lg font-bold text-[#23262b] mb-1">Mulai Ulang?</h3>
+            <p class="text-xs sm:text-sm text-[#686d76] mb-5">Progres permainan saat ini akan diatur ulang.</p>
+            <div class="grid grid-cols-2 gap-2">
+                <button id="btn-cancel-restart" class="py-2.5 px-4 rounded-xl bg-[#faf9f6] hover:bg-stone-100 border border-[#d6d1c7] text-[#23262b] font-semibold text-sm">
+                    Batal
+                </button>
+                <button id="btn-confirm-restart" class="py-2.5 px-4 rounded-xl bg-[#d9534f] hover:bg-[#c4433f] text-white font-semibold text-sm">
+                    Ulangi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Panduan Install Manual (iOS Safari / Browser Lain) -->
+    <div id="install-guide-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+        <div class="w-full max-w-xs bg-white border border-[#d6d1c7] rounded-2xl p-5 text-left shadow-lg">
+            <h3 class="text-lg font-bold text-[#23262b] text-center mb-1">Install DOLVIN BLOCK</h3>
+            <p class="text-xs text-[#686d76] text-center mb-4">Pasang game di layar utama HP agar tampil layar penuh seperti aplikasi asli:</p>
+
+            <div class="space-y-3 text-xs text-[#23262b] bg-[#faf9f6] p-3.5 rounded-xl border border-[#d6d1c7] mb-4">
+                <div>
+                    <div class="font-bold text-[#32363f] mb-0.5">Android (Chrome):</div>
+                    <p class="text-[#686d76] leading-relaxed">Ketuk ikon menu <b>(⋮)</b> di pojok kanan atas browser, lalu pilih <b>"Tambahkan ke Layar utama"</b> atau <b>"Install aplikasi"</b>.</p>
+                </div>
+                <div class="pt-2 border-t border-[#d6d1c7]">
+                    <div class="font-bold text-[#32363f] mb-0.5">iPhone / iPad (Safari):</div>
+                    <p class="text-[#686d76] leading-relaxed">Ketuk ikon <b>Bagikan / Share</b> di bagian bawah layar, lalu pilih <b>"Tambah ke Layar Utama"</b>.</p>
+                </div>
+            </div>
+
+            <button id="btn-close-install-guide" class="w-full py-2.5 px-4 rounded-xl bg-[#32363f] hover:bg-[#23262b] text-white font-semibold text-sm">
+                Mengerti
+            </button>
+        </div>
+    </div>
+
+    <div id="gameover-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+        <div class="w-full max-w-xs bg-white border border-[#d6d1c7] rounded-2xl p-6 text-center shadow-lg">
+            <h2 class="text-xl font-bold mb-1">Permainan Selesai</h2>
+            <div class="text-[10px] uppercase text-[#686d76] font-semibold mt-3">Skor</div>
+            <div id="gameover-score" class="text-3xl font-extrabold mb-5">0</div>
+            <div class="flex flex-col gap-2">
+                <button id="btn-gameover-restart" class="py-3 rounded-xl bg-[#32363f] text-white font-bold">Main Lagi</button>
+                <button id="btn-gameover-menu" class="py-2.5 rounded-xl bg-[#faf9f6] border border-[#d6d1c7] font-semibold text-sm">Menu Mode</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+(function(){
+  const sec=document.getElementById('install-section');
+  if(window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true)sec.classList.add('hidden');
+  let dp=null;
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e});
+  window.addEventListener('appinstalled',()=>{dp=null;sec.classList.add('hidden')});
+  const g=document.getElementById('install-guide-modal');
+  document.getElementById('btn-install-app').onclick=async()=>{
+    if(dp){dp.prompt();await dp.userChoice;dp=null}else{g.classList.remove('hidden');g.classList.add('flex')}
+  };
+  document.getElementById('btn-close-install-guide').onclick=()=>{g.classList.add('hidden');g.classList.remove('flex')};
+  if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+})();
+    </script>
+    <script>
+(function(){
+const $=id=>document.getElementById(id),N=8,PAD=6,GAP=2;
+const show=e=>{e.classList.remove('hidden');e.classList.add('flex')},hide=e=>{e.classList.add('hidden');e.classList.remove('flex')};
+const COL=['cyan','amber','rose','emerald','violet','blue','orange'];
+const HEX={cyan:'#2b9eb3',amber:'#e09f3e',rose:'#d9534f',emerald:'#3fa36c',violet:'#7e6bc4',blue:'#467fd0',orange:'#e07a3d'};
+const norm=s=>{const a=Math.min(...s.map(p=>p[0])),b=Math.min(...s.map(p=>p[1]));return s.map(p=>[p[0]-a,p[1]-b])};
+const rot=s=>norm(s.map(([r,c])=>[c,-r]));
+const rect=(h,w)=>{const a=[];for(let r=0;r<h;r++)for(let c=0;c<w;c++)a.push([r,c]);return a};
+const sz=s=>[Math.max(...s.map(p=>p[0]))+1,Math.max(...s.map(p=>p[1]))+1];
+const SH=[[[0,0]],rect(1,2),rect(2,1),rect(1,3),rect(3,1),rect(1,4),rect(4,1),rect(1,5),rect(5,1),rect(2,2),rect(3,3),rect(2,3),rect(3,2)];
+[[[0,0],[1,0],[1,1]],[[0,0],[1,0],[2,0],[2,1],[2,2]]].forEach(b=>{let s=b;for(let i=0;i<4;i++){SH.push(s);s=rot(s)}});
+let ac;const beep=(f,d=.1,t='sine')=>{try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();ac.resume();const o=ac.createOscillator(),g=ac.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(.08,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}};
+const ls={get:(k,d)=>{try{return+localStorage.getItem(k)||d}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+let mode='classic',board,dock,score=0,over=false,busy=false,drag=null,best=ls.get('dolvin_best',0),level=ls.get('dolvin_level',1);
+const stars=()=>board.flat().filter(v=>v&&v.s).length;
+const can=(s,r,c)=>s.every(([a,b])=>{const y=r+a,x=c+b;return y>=0&&x>=0&&y<N&&x<N&&!board[y][x]});
+const fits=p=>{for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(can(p.s,r,c))return true;return false};
+function metrics(){const w=$('board').getBoundingClientRect();const cell=(w.width-PAD*2-GAP*(N-1))/N;return{r:w,cell,pitch:cell+GAP}}
+function newGame(){
+  board=Array.from({length:N},()=>Array(N).fill(null));score=0;over=false;busy=false;
+  if(mode==='level'){
+    const cells=[];for(let r=0;r<N;r++)for(let c=0;c<N;c++)cells.push([r,c]);
+    cells.sort(()=>Math.random()-.5);
+    const ns=Math.min(2+level,10),nf=Math.min(level*2,18);
+    cells.slice(0,ns+nf).forEach(([r,c],i)=>{board[r][c]={k:COL[Math.random()*7|0],s:i<ns}});
+  }
+  dock=[null,null,null];refill();render();hud();
+}
+function refill(){dock=dock.map(()=>({s:SH[Math.random()*SH.length|0],k:COL[Math.random()*7|0]}))}
+function render(ghost,clr){
+  const b=$('board');b.innerHTML='';
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const d=document.createElement('div'),v=board[r][c],id=r*N+c;
+    if(v){d.className='block-tile color-'+v.k;if(v.s)d.innerHTML='<span class="star-icon">★</span>'}
+    else{d.className='board-cell';if(ghost&&ghost.has(id)){d.classList.add('ghost-valid');d.style.backgroundColor=HEX[drag.p.k]}}
+    if(clr&&clr.has(id))d.classList.add('will-clear');
+    b.appendChild(d);
+  }
+  dock.forEach((p,i)=>{
+    const el=$('dock-'+i);el.classList.toggle('disabled-piece',!!p&&!fits(p));
+    if(!p){el.innerHTML='';return}
+    const[h,w]=sz(p.s);
+    el.innerHTML='<div style="display:grid;gap:2px;grid-template-columns:repeat('+w+',16px)">'+p.s.map(([r,c])=>'<div class="block-tile color-'+p.k+'" style="grid-row:'+(r+1)+';grid-column:'+(c+1)+';width:16px;height:16px"></div>').join('')+'</div>';
+  });
+}
+function hud(){
+  $('hud-score').textContent=score;
+  if(mode==='classic'){$('hud-best-label').textContent='Terbaik';$('hud-best').textContent=best}
+  else{$('hud-best-label').textContent='Tingkat '+level;$('hud-best').textContent='★ '+stars()}
+}
+function lines(occ){
+  const rows=[],cols=[];
+  for(let k=0;k<N;k++){let a=true,b=true;for(let x=0;x<N;x++){if(!occ(k,x))a=false;if(!occ(x,k))b=false}if(a)rows.push(k);if(b)cols.push(k)}
+  const set=new Set();rows.forEach(k=>{for(let x=0;x<N;x++)set.add(k*N+x)});cols.forEach(k=>{for(let y=0;y<N;y++)set.add(y*N+k)});
+  return{set,n:rows.length+cols.length};
+}
+function popup(t){
+  const m=metrics(),d=document.createElement('div');d.className='floating-popup';d.textContent=t;
+  d.style.left=(m.r.left+m.r.width/2)+'px';d.style.top=(m.r.top+m.r.height/2)+'px';
+  document.body.appendChild(d);setTimeout(()=>d.remove(),800);
+}
+function dragMove(e){
+  if(!drag)return;
+  const m=metrics(),[h,w]=sz(drag.p.s),left=e.clientX-(w*m.pitch-GAP)/2,top=e.clientY-70-(h*m.pitch-GAP)/2;
+  $('drag-piece').style.transform='translate('+left+'px,'+top+'px)';
+  const c=Math.round((left-m.r.left-PAD)/m.pitch),r=Math.round((top-m.r.top-PAD)/m.pitch);
+  if(can(drag.p.s,r,c)){
+    drag.pos=[r,c];
+    const g=new Set(drag.p.s.map(([a,b])=>(r+a)*N+c+b));
+    render(g,lines((y,x)=>board[y][x]||g.has(y*N+x)).set);
+  }else{drag.pos=null;render()}
+}
+function dragEnd(e){
+  window.removeEventListener('pointermove',dragMove);window.removeEventListener('pointerup',dragEnd);window.removeEventListener('pointercancel',dragEnd);
+  hide($('drag-piece'));$('drag-piece').classList.add('hidden');
+  const d=drag;drag=null;
+  if(d&&d.pos)place(d);else render();
+}
+document.querySelectorAll('.dock-slot').forEach((el,i)=>el.addEventListener('pointerdown',e=>{
+  const p=dock[i];if(!p||busy||over)return;
+  e.preventDefault();beep(520,.05);
+  const m=metrics(),[h,w]=sz(p.s),d=$('drag-piece');
+  drag={i,p,pos:null};
+  d.style.gap=GAP+'px';d.style.gridTemplateColumns='repeat('+w+','+m.cell+'px)';
+  d.innerHTML=p.s.map(([r,c])=>'<div class="block-tile color-'+p.k+'" style="grid-row:'+(r+1)+';grid-column:'+(c+1)+';width:'+m.cell+'px;height:'+m.cell+'px"></div>').join('');
+  d.classList.remove('hidden');d.style.display='grid';
+  window.addEventListener('pointermove',dragMove);window.addEventListener('pointerup',dragEnd);window.addEventListener('pointercancel',dragEnd);
+  dragMove(e);
+}));
+async function place(d){
+  busy=true;const[r,c]=d.pos;
+  d.p.s.forEach(([a,b])=>{board[r+a][c+b]={k:d.p.k,s:false}});
+  score+=d.p.s.length;dock[d.i]=null;beep(440,.08);
+  const{set,n}=lines((y,x)=>board[y][x]);
+  render();
+  if(set.size){
+    const ch=$('board').children;set.forEach(id=>ch[id].classList.add('animate-clear'));
+    await wait(250);
+    set.forEach(id=>{board[id/N|0][id%N]=null});
+    const pts=set.size*n;score+=pts;popup('+'+pts+(n>1?' kombo x'+n:''));beep(600+n*90,.22,'triangle');
+  }
+  if(dock.every(x=>!x))refill();
+  busy=false;render();hud();check();
+}
+function check(){
+  if(mode==='level'&&stars()===0){
+    beep(784,.3,'triangle');$('levelclear-title').textContent='Tingkat '+level+' Selesai!';
+    $('levelclear-score').textContent=score;level++;ls.set('dolvin_level',level);over=true;show($('levelclear-modal'));return;
+  }
+  if(dock.every(p=>!p||!fits(p))){
+    over=true;beep(180,.5,'sawtooth');
+    if(mode==='classic'&&score>best){best=score;ls.set('dolvin_best',best)}
+    $('gameover-score').textContent=score;hud();show($('gameover-modal'));
+  }
+}
+function menu(){
+  $('menu-best-score').textContent=best;$('menu-current-level').textContent='Tingkat '+level;show($('mode-menu'));
+}
+$('select-classic').onclick=()=>{mode='classic';hide($('mode-menu'));newGame()};
+$('select-level').onclick=()=>{mode='level';hide($('mode-menu'));newGame()};
+$('btn-menu').onclick=menu;
+$('btn-restart').onclick=()=>show($('restart-modal'));
+$('btn-cancel-restart').onclick=()=>hide($('restart-modal'));
+$('btn-confirm-restart').onclick=()=>{hide($('restart-modal'));newGame()};
+$('btn-gameover-restart').onclick=()=>{hide($('gameover-modal'));newGame()};
+$('btn-gameover-menu').onclick=()=>{hide($('gameover-modal'));menu()};
+$('btn-next-level').onclick=()=>{hide($('levelclear-modal'));newGame()};
+$('btn-levelclear-menu').onclick=()=>{hide($('levelclear-modal'));menu()};
+menu();newGame();
+})();
+    </script>
+
+</body>
+</html>
