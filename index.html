@@ -152,6 +152,8 @@
         }
 
         /* Lapisan Balok Saat Diseret */
+        #drag-piece.hidden { display: none !important; }
+
         #drag-piece {
             position: fixed;
             top: 0;
@@ -426,7 +428,7 @@ function dragMove(e){
 }
 function dragEnd(e){
   window.removeEventListener('pointermove',dragMove);window.removeEventListener('pointerup',dragEnd);window.removeEventListener('pointercancel',dragEnd);
-  hide($('drag-piece'));$('drag-piece').classList.add('hidden');
+  hide($('drag-piece'));$('drag-piece').style.display='none';$('drag-piece').classList.add('hidden');
   const d=drag;drag=null;
   if(d&&d.pos)place(d);else render();
 }
