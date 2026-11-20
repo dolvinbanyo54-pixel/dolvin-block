@@ -274,6 +274,8 @@
         }
 
         #board {
+            margin-top: clamp(6px, 1.5dvh, 12px);
+            align-self: center;
             background: linear-gradient(145deg, #142238, #0b1322) !important;
             border: 1px solid rgba(148, 163, 184, 0.16);
             border-radius: 22px !important;
@@ -406,6 +408,10 @@
         #levelclear-modal p, #restart-modal p, #install-guide-modal p,
         #gameover-modal .text-\[10px\] {
             color: var(--text-secondary) !important;
+        }
+
+        @media (max-height: 700px) and (max-width: 600px) {
+            #board { margin-top: 4px; }
         }
 
         @media (max-width: 420px) {
