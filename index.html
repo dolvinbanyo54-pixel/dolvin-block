@@ -426,6 +426,131 @@
                 transition-duration: 0.01ms !important;
             }
         }
+
+        /* Shop and power-up UI */
+        #btn-shop {
+            width: 44px !important;
+            height: 44px !important;
+            background: rgba(200, 243, 107, 0.12) !important;
+            border: 1px solid rgba(200, 243, 107, 0.35) !important;
+            color: var(--accent) !important;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+            transition: transform 0.18s ease, background 0.18s ease;
+        }
+
+        #btn-shop:hover {
+            transform: translateY(-2px);
+            background: rgba(200, 243, 107, 0.2) !important;
+        }
+
+        #coin-balance {
+            color: var(--accent) !important;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #shop-modal {
+            background: rgba(5, 10, 20, 0.78) !important;
+            backdrop-filter: blur(12px);
+        }
+
+        #shop-modal > div {
+            background: linear-gradient(160deg, #182943, #101a2c) !important;
+            border: 1px solid rgba(148, 163, 184, 0.22) !important;
+            border-radius: 24px !important;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .shop-balance {
+            background: rgba(200, 243, 107, 0.08);
+            border: 1px solid rgba(200, 243, 107, 0.22);
+            color: var(--accent);
+        }
+
+        .skill-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.035);
+        }
+
+        .skill-icon {
+            display: grid;
+            place-items: center;
+            width: 42px;
+            height: 42px;
+            flex: 0 0 42px;
+            border-radius: 13px;
+            background: rgba(200, 243, 107, 0.12);
+            font-size: 1.4rem;
+        }
+
+        .skill-copy {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .skill-name {
+            color: var(--text-primary);
+            font-weight: 800;
+            font-size: 0.9rem;
+        }
+
+        .skill-description {
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            line-height: 1.35;
+            margin-top: 2px;
+        }
+
+        .skill-meta {
+            color: var(--accent);
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .skill-action {
+            flex: 0 0 auto;
+            border: 0;
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: var(--accent);
+            color: #101a12;
+            font-size: 0.72rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .skill-action:hover {
+            background: var(--accent-strong);
+        }
+
+        .skill-action.use {
+            background: #5d9bff;
+            color: #071326;
+        }
+
+        .skill-action:disabled {
+            cursor: not-allowed;
+            opacity: 0.42;
+        }
+
+        #board.skill-target {
+            outline: 2px solid var(--accent);
+            outline-offset: 5px;
+            cursor: crosshair;
+        }
+
+        .skill-hint {
+            min-height: 18px;
+            color: var(--accent);
+            font-size: 0.72rem;
+            text-align: center;
+        }
     </style>
 </head>
 <body class="flex flex-col items-center px-3">
@@ -434,11 +559,16 @@
     <div id="drag-piece" class="hidden"></div>
 
     <div id="hud-bar" class="w-full max-w-[420px] flex items-center justify-between">
-        <div><div class="text-[10px] uppercase font-semibold text-[#686d76]">Skor</div><div id="hud-score" class="text-2xl font-extrabold">0</div></div>
+        <div>
+            <div class="text-[10px] uppercase font-semibold text-[#686d76]">Skor</div>
+            <div id="hud-score" class="text-2xl font-extrabold">0</div>
+            <div class="mt-1 text-[10px] font-bold"><span class="text-[#686d76]">COIN</span> <span id="coin-balance">999999</span></div>
+        </div>
         <div class="text-center"><div id="hud-best-label" class="text-[10px] uppercase font-semibold text-[#686d76]">Terbaik</div><div id="hud-best" class="text-lg font-bold">0</div></div>
         <div class="flex gap-2">
-            <button id="btn-restart" class="w-10 h-10 rounded-xl bg-white border border-[#d6d1c7] font-bold">↻</button>
-            <button id="btn-menu" class="w-10 h-10 rounded-xl bg-white border border-[#d6d1c7] font-bold">☰</button>
+            <button id="btn-shop" class="rounded-xl font-bold" aria-label="Buka toko">🛒</button>
+            <button id="btn-restart" class="w-10 h-10 rounded-xl bg-white border border-[#d6d1c7] font-bold" aria-label="Mulai ulang">↻</button>
+            <button id="btn-menu" class="w-10 h-10 rounded-xl bg-white border border-[#d6d1c7] font-bold" aria-label="Menu">☰</button>
         </div>
     </div>
     <div id="board" class="grid rounded-xl bg-[#32363f]" aria-label="Papan permainan" style="width:min(92vw,420px);aspect-ratio:1;padding:6px;gap:2px;grid-template-columns:repeat(8,1fr)"></div>
@@ -448,6 +578,35 @@
         <div id="dock-2" class="dock-slot"></div>
     </div>
 
+
+    <!-- Toko kemampuan -->
+    <div id="shop-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="w-full max-w-sm p-5">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <div class="text-[10px] uppercase tracking-[0.18em] text-[#9aa9be] font-bold">Power-ups</div>
+                    <h2 class="text-xl font-extrabold mt-1">Toko kemampuan</h2>
+                </div>
+                <button id="btn-close-shop" class="rounded-xl px-3 py-2 bg-white/10 text-white font-bold" aria-label="Tutup toko">×</button>
+            </div>
+            <div class="shop-balance rounded-xl px-3 py-2 mb-3 flex items-center justify-between text-sm font-extrabold">
+                <span>Saldo kamu</span><span>🪙 <b id="shop-coin-balance">999999</b></span>
+            </div>
+            <div id="shop-items" class="flex flex-col gap-2"><div class="skill-card">
+                    <div class="skill-icon">🔨</div><div class="skill-copy"><div class="skill-name">Palu</div><div class="skill-description">Hapus satu balok.</div><div class="skill-meta">1 coin · Dimiliki: <span id="skill-hammer-count">0</span></div></div>
+                    <button id="skill-hammer-buy" class="skill-action">Beli</button><button id="skill-hammer-action" class="skill-action use">Pakai</button>
+                </div>
+                <div class="skill-card">
+                    <div class="skill-icon">⚡</div><div class="skill-copy"><div class="skill-name">Petir</div><div class="skill-description">Hapus satu baris dan kolom.</div><div class="skill-meta">5 coin · Dimiliki: <span id="skill-lightning-count">0</span></div></div>
+                    <button id="skill-lightning-buy" class="skill-action">Beli</button><button id="skill-lightning-action" class="skill-action use">Pakai</button>
+                </div>
+                <div class="skill-card">
+                    <div class="skill-icon">💣</div><div class="skill-copy"><div class="skill-name">Bom</div><div class="skill-description">Hancurkan area 3 × 3.</div><div class="skill-meta">10 coin · Dimiliki: <span id="skill-bomb-count">0</span></div></div>
+                    <button id="skill-bomb-buy" class="skill-action">Beli</button><button id="skill-bomb-action" class="skill-action use">Pakai</button>
+                </div></div>
+            <div id="skill-hint" class="skill-hint mt-3"></div>
+        </div>
+    </div>
 
     <!-- Layar Pilih Mode Awal (Klasik vs Tingkatan) -->
     <div id="mode-menu" class="fixed inset-0 z-50 flex items-center justify-center bg-[#efece6] p-4">
@@ -611,7 +770,15 @@ const SH=[[[0,0]],rect(1,2),rect(2,1),rect(1,3),rect(3,1),rect(1,4),rect(4,1),re
 let ac;const beep=(f,d=.1,t='sine')=>{try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();ac.resume();const o=ac.createOscillator(),g=ac.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(.08,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}};
 const ls={get:(k,d)=>{try{return+localStorage.getItem(k)||d}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const readNum=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:Number(v)}catch(e){return d}};
+const SKILLS={
+  hammer:{name:'Palu',icon:'🔨',price:1,description:'Hapus satu balok yang mengganggu.'},
+  lightning:{name:'Petir',icon:'⚡',price:5,description:'Hapus satu baris dan satu kolom.'},
+  bomb:{name:'Bom',icon:'💣',price:10,description:'Hancurkan area 3 × 3.'}
+};
 let mode='classic',board,dock,score=0,over=false,busy=false,drag=null,best=ls.get('dolvin_best',0),level=ls.get('dolvin_level',1);
+let coins=readNum('dolvin_coins',999999),activeSkill=null;
+const inventory={hammer:readNum('dolvin_hammer',0),lightning:readNum('dolvin_lightning',0),bomb:readNum('dolvin_bomb',0)};
 const stars=()=>board.flat().filter(v=>v&&v.s).length;
 const can=(s,r,c)=>s.every(([a,b])=>{const y=r+a,x=c+b;return y>=0&&x>=0&&y<N&&x<N&&!board[y][x]});
 const fits=p=>{for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(can(p.s,r,c))return true;return false};
@@ -661,8 +828,10 @@ function render(ghost,clr){
 }
 function hud(){
   $('hud-score').textContent=score;
+  $('coin-balance').textContent=coins.toLocaleString('id-ID');
   if(mode==='classic'){$('hud-best-label').textContent='Terbaik';$('hud-best').textContent=best}
   else{$('hud-best-label').textContent='Tingkat '+level;$('hud-best').textContent='★ '+stars()}
+  updateShop();
 }
 function lines(occ){
   const rows=[],cols=[];
@@ -706,6 +875,75 @@ document.querySelectorAll('.dock-slot').forEach((el,i)=>el.addEventListener('poi
   window.addEventListener('pointermove',dragMove);window.addEventListener('pointerrawupdate',dragMove);window.addEventListener('pointerup',dragEnd);window.addEventListener('pointercancel',dragEnd);
   dragMove(e);
 }));
+
+$('board').addEventListener('pointerdown',e=>{
+  if(!activeSkill||busy||over)return;
+  e.preventDefault();
+  useSkillAt(e);
+});
+
+function saveInventory(id){ls.set('dolvin_'+id,inventory[id])}
+function updateShop(){
+  const balance=$('shop-coin-balance');
+  if(balance)balance.textContent=coins.toLocaleString('id-ID');
+  Object.entries(SKILLS).forEach(([id,s])=>{
+    const button=$('skill-'+id+'-action'),count=$('skill-'+id+'-count');
+    if(count)count.textContent=inventory[id];
+    if(!button)return;
+    button.textContent=activeSkill===id?'Pilih papan':'Pakai';
+    button.classList.toggle('use',activeSkill===id);
+    button.disabled=inventory[id]<=0;
+  });
+}
+function buySkill(id){
+  const s=SKILLS[id];
+  if(!s||coins<s.price)return;
+  coins-=s.price;inventory[id]++;ls.set('dolvin_coins',coins);saveInventory(id);
+  popup(s.name+' dibeli');
+  beep(720,.12,'triangle');hud();
+}
+function selectSkill(id){
+  if(inventory[id]<=0)return;
+  activeSkill=activeSkill===id?null:id;
+  $('board').classList.toggle('skill-target',!!activeSkill);
+  $('skill-hint').textContent=activeSkill?'Pilih kotak di papan untuk memakai '+SKILLS[id].name+'.':'';
+  updateShop();
+  if(activeSkill)hide($('shop-modal'));
+}
+function boardCellFromEvent(e){
+  const m=metrics(),x=e.clientX-m.r.left-m.ox,y=e.clientY-m.r.top-m.oy;
+  const col=Math.floor(x/m.pitch),row=Math.floor(y/m.pitch);
+  return row>=0&&row<N&&col>=0&&col<N?[row,col]:null;
+}
+function consumeSkill(id){
+  inventory[id]--;saveInventory(id);activeSkill=null;
+  $('board').classList.remove('skill-target');
+  $('skill-hint').textContent='';
+}
+function useSkillAt(e){
+  const pos=boardCellFromEvent(e);if(!pos)return;
+  const[r,c]=pos,id=activeSkill,removed=new Set();
+  if(id==='hammer'){
+    if(!board[r][c]){popup('Pilih balok yang terisi');return}
+    removed.add(r*N+c);
+  }else if(id==='lightning'){
+    for(let x=0;x<N;x++)if(board[r][x])removed.add(r*N+x);
+    for(let y=0;y<N;y++)if(board[y][c])removed.add(y*N+c);
+    if(!removed.size){popup('Pilih area yang terisi');return}
+  }else if(id==='bomb'){
+    for(let y=Math.max(0,r-1);y<=Math.min(N-1,r+1);y++)for(let x=Math.max(0,c-1);x<=Math.min(N-1,c+1);x++)if(board[y][x])removed.add(y*N+x);
+    if(!removed.size){popup('Pilih area yang terisi');return}
+  }
+  removed.forEach(index=>{board[Math.floor(index/N)][index%N]=null});
+  score+=id==='lightning'?removed.size*2:removed.size;
+  consumeSkill(id);beep(id==='lightning'?880:520,.18,id==='bomb'?'sawtooth':'triangle');
+  popup('-'+removed.size+' blok');
+  render();hud();check();
+}
+function openShop(){
+  updateShop();show($('shop-modal'));
+}
+
 async function place(d){
   busy=true;const[r,c]=d.pos;
   d.p.s.forEach(([a,b])=>{board[r+a][c+b]={k:d.p.k,s:false}});
@@ -739,6 +977,12 @@ function menu(){
 $('select-classic').onclick=()=>{mode='classic';hide($('mode-menu'));newGame()};
 $('select-level').onclick=()=>{mode='level';hide($('mode-menu'));newGame()};
 $('btn-menu').onclick=menu;
+$('btn-shop').onclick=openShop;
+$('btn-close-shop').onclick=()=>{hide($('shop-modal'));updateShop()};
+Object.keys(SKILLS).forEach(id=>{
+  $('skill-'+id+'-buy').onclick=()=>buySkill(id);
+  $('skill-'+id+'-action').onclick=()=>selectSkill(id);
+});
 $('btn-restart').onclick=()=>show($('restart-modal'));
 $('btn-cancel-restart').onclick=()=>hide($('restart-modal'));
 $('btn-confirm-restart').onclick=()=>{hide($('restart-modal'));newGame()};
