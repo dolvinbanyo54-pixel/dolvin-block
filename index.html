@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DOLVIN BLOCK</title>
     <!-- Konfigurasi PWA agar bisa di-install di layar utama HP -->
     <meta name="theme-color" content="#efece6">
@@ -52,9 +52,26 @@
             touch-action: pan-y;
         }
 
-        body { width:100%; gap:clamp(10px,2dvh,18px); padding-top:max(10px,env(safe-area-inset-top)); padding-bottom:max(10px,env(safe-area-inset-bottom)); }
-        @media (max-height:520px) { body { gap:10px; } .dock-slot { height:76px; } }
-        @media (min-width:700px) { body { padding-top:20px; padding-bottom:20px; } }
+        body {
+            width: 100%;
+            min-height: 100dvh;
+            gap: clamp(8px, 2dvh, 18px);
+            padding-top: max(10px, env(safe-area-inset-top));
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+        @media (max-height: 700px) and (max-width: 600px) {
+            body { gap: 8px; }
+            #board { width: min(88vw, calc(100dvh - 292px)) !important; }
+            .dock-slot { height: clamp(58px, 12dvh, 88px); min-height: 58px; }
+        }
+        @media (max-height: 520px) and (orientation: landscape) {
+            body { gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+            #board { width: min(58vw, calc(100dvh - 150px)) !important; }
+            .dock-slot { height: 58px; min-height: 58px; }
+        }
+        @media (min-width: 700px) {
+            body { padding-top: 20px; padding-bottom: 20px; }
+        }
 
         /* Gaya Balok Klasik Sederhana dengan Bevel Tipis */
         .block-tile {
@@ -169,6 +186,7 @@
 
         /* Slot Balok di Bawah */
         .dock-slot {
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -176,8 +194,8 @@
             background-color: var(--surface);
             border: 1px solid var(--border-subtle);
             cursor: grab;
-            min-height:76px;
-            height:clamp(76px,14dvh,110px);
+            min-height:58px;
+            height:clamp(58px,12dvh,110px);
             touch-action:none;
         }
         .dock-slot:active {
@@ -201,11 +219,11 @@
             <button id="btn-menu" class="w-10 h-10 rounded-xl bg-white border border-[#d6d1c7] font-bold">☰</button>
         </div>
     </div>
-    <div id="board" class="grid rounded-xl bg-[#32363f]" style="width:min(92vw,420px);aspect-ratio:1;padding:6px;gap:2px;grid-template-columns:repeat(8,1fr)"></div>
+    <div id="board" class="grid rounded-xl bg-[#32363f]" aria-label="Papan permainan" style="width:min(92vw,420px);aspect-ratio:1;padding:6px;gap:2px;grid-template-columns:repeat(8,1fr)"></div>
     <div class="w-full max-w-[420px] grid grid-cols-3 gap-2">
         <div id="dock-0" class="dock-slot" ></div>
-        <div id="dock-1" class="dock-slot" style="height:110px"></div>
-        <div id="dock-2" class="dock-slot" style="height:110px"></div>
+        <div id="dock-1" class="dock-slot"></div>
+        <div id="dock-2" class="dock-slot"></div>
     </div>
 
 
@@ -482,6 +500,7 @@ $('btn-gameover-restart').onclick=()=>{hide($('gameover-modal'));newGame()};
 $('btn-gameover-menu').onclick=()=>{hide($('gameover-modal'));menu()};
 $('btn-next-level').onclick=()=>{hide($('levelclear-modal'));newGame()};
 $('btn-levelclear-menu').onclick=()=>{hide($('levelclear-modal'));menu()};
+window.addEventListener('resize',()=>{if(!drag)render()});
 menu();newGame();
 })();
     </script>
