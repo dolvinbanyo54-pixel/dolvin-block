@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DOLVIN BLOCK</title>
     <!-- Konfigurasi PWA agar bisa di-install di layar utama HP -->
-    <meta name="theme-color" content="#efece6">
+    <meta name="theme-color" content="#0b1220">
     <meta name="application-name" content="DOLVIN BLOCK">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -203,6 +203,224 @@
         }
         .dock-slot.disabled-piece {
             opacity: 0.38;
+        }
+
+        /* Modern midnight arcade visual system */
+        :root {
+            --bg-main: #0b1220;
+            --surface: #121c2f;
+            --surface-raised: #17243a;
+            --border-subtle: rgba(148, 163, 184, 0.2);
+            --text-primary: #f4f7fb;
+            --text-secondary: #9aa9be;
+            --board-bg: #0f192b;
+            --cell-empty: #18253a;
+            --accent: #c8f36b;
+            --accent-strong: #a9df45;
+            --glow: rgba(200, 243, 107, 0.22);
+        }
+
+        html, body {
+            background:
+                radial-gradient(circle at 50% -10%, rgba(64, 103, 170, 0.28), transparent 42%),
+                var(--bg-main);
+            color: var(--text-primary);
+        }
+
+        body {
+            gap: clamp(10px, 2.5dvh, 20px);
+        }
+
+        body > .w-full.max-w-\[420px\]:first-of-type {
+            padding: 4px 2px 0;
+        }
+
+        body > .w-full.max-w-\[420px\]:first-of-type > div:first-child,
+        body > .w-full.max-w-\[420px\]:first-of-type > div:nth-child(2) {
+            color: var(--text-primary) !important;
+        }
+
+        body > .w-full.max-w-\[420px\]:first-of-type .text-\[10px\],
+        body > .w-full.max-w-\[420px\]:first-of-type #hud-best-label {
+            color: var(--text-secondary) !important;
+            letter-spacing: 0.12em;
+        }
+
+        #hud-score {
+            color: var(--accent) !important;
+            font-size: clamp(1.75rem, 7vw, 2.25rem) !important;
+            line-height: 1;
+            text-shadow: 0 0 24px var(--glow);
+        }
+
+        #hud-best {
+            color: var(--text-primary) !important;
+        }
+
+        #btn-restart, #btn-menu {
+            width: 44px !important;
+            height: 44px !important;
+            background: var(--surface) !important;
+            border: 1px solid var(--border-subtle) !important;
+            color: var(--text-primary) !important;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+            transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+
+        #btn-restart:hover, #btn-menu:hover {
+            transform: translateY(-2px);
+            border-color: rgba(200, 243, 107, 0.55) !important;
+            background: var(--surface-raised) !important;
+        }
+
+        #board {
+            background: linear-gradient(145deg, #142238, #0b1322) !important;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 22px !important;
+            padding: 8px !important;
+            gap: 3px !important;
+            box-shadow: 0 22px 50px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        .board-cell {
+            background: var(--cell-empty);
+            border: 1px solid rgba(148, 163, 184, 0.07);
+            border-radius: 6px;
+        }
+
+        .block-tile {
+            border-radius: 7px;
+            border-width: 0 !important;
+            box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18), 0 3px 7px rgba(0, 0, 0, 0.22);
+        }
+
+        .block-tile::after {
+            inset: 2px;
+            border-top: 2px solid rgba(255, 255, 255, 0.42);
+            border-left: 2px solid rgba(255, 255, 255, 0.25);
+            border-radius: 5px;
+        }
+
+        .color-cyan    { background: #25c6d9; }
+        .color-amber   { background: #f5b84b; }
+        .color-rose    { background: #ff6470; }
+        .color-emerald { background: #47d18a; }
+        .color-violet  { background: #9d83ff; }
+        .color-blue    { background: #5d9bff; }
+        .color-orange  { background: #ff8a4c; }
+
+        .dock-slot {
+            min-height: 70px;
+            background: rgba(18, 28, 47, 0.82);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255,255,255,0.04);
+            transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+
+        .dock-slot:not(.disabled-piece):hover {
+            transform: translateY(-3px);
+            border-color: rgba(200, 243, 107, 0.55);
+            background: var(--surface-raised);
+        }
+
+        .dock-slot.disabled-piece {
+            opacity: 0.28;
+        }
+
+        #mode-menu, #levelclear-modal, #restart-modal, #install-guide-modal, #gameover-modal {
+            background: rgba(5, 10, 20, 0.78) !important;
+            backdrop-filter: blur(12px);
+        }
+
+        #mode-menu > div, #levelclear-modal > div, #restart-modal > div,
+        #install-guide-modal > div, #gameover-modal > div {
+            background: linear-gradient(160deg, #182943, #101a2c) !important;
+            border: 1px solid rgba(148, 163, 184, 0.22) !important;
+            border-radius: 24px !important;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42) !important;
+            color: var(--text-primary) !important;
+        }
+
+        #mode-menu h1 {
+            letter-spacing: -0.04em;
+            color: var(--text-primary) !important;
+        }
+
+        #mode-menu p, #mode-menu .text-\[10px\],
+        #mode-menu .text-xs, #mode-menu .text-\[10px\] {
+            color: var(--text-secondary) !important;
+        }
+
+        #select-classic, #select-level {
+            background: rgba(255,255,255,0.035) !important;
+            border-color: rgba(148, 163, 184, 0.2) !important;
+            color: var(--text-primary) !important;
+            transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+
+        #select-classic:hover, #select-level:hover {
+            transform: translateY(-2px);
+            background: rgba(200, 243, 107, 0.08) !important;
+            border-color: rgba(200, 243, 107, 0.65) !important;
+        }
+
+        #select-classic .text-\[\#23262b\], #select-level .text-\[\#23262b\],
+        #menu-best-score, #menu-current-level {
+            color: var(--text-primary) !important;
+        }
+
+        #menu-current-level {
+            color: var(--accent) !important;
+        }
+
+        #btn-install-app, #btn-next-level, #btn-gameover-restart {
+            background: var(--accent) !important;
+            color: #101a12 !important;
+            box-shadow: 0 10px 24px rgba(200, 243, 107, 0.2);
+        }
+
+        #btn-install-app:hover, #btn-next-level:hover, #btn-gameover-restart:hover {
+            background: var(--accent-strong) !important;
+        }
+
+        #btn-levelclear-menu, #btn-cancel-restart, #btn-gameover-menu, #btn-close-install-guide {
+            background: rgba(255,255,255,0.06) !important;
+            border-color: rgba(148, 163, 184, 0.22) !important;
+            color: var(--text-primary) !important;
+        }
+
+        #mode-menu .border-t, #install-guide-modal .border-t {
+            border-color: rgba(148, 163, 184, 0.18) !important;
+        }
+
+        #levelclear-modal h2, #restart-modal h3, #install-guide-modal h3,
+        #gameover-modal h2, #levelclear-score, #gameover-score {
+            color: var(--text-primary) !important;
+        }
+
+        #levelclear-modal p, #restart-modal p, #install-guide-modal p,
+        #gameover-modal .text-\[10px\] {
+            color: var(--text-secondary) !important;
+        }
+
+        @media (max-width: 420px) {
+            body > .w-full.max-w-\[420px\]:first-of-type {
+                padding-inline: 2px;
+            }
+            #board {
+                border-radius: 18px !important;
+            }
+            .dock-slot {
+                border-radius: 14px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
