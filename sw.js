@@ -1,4 +1,4 @@
-const C='dolvin-v4';
+const C='dolvin-v5';
 const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 const EXTRAS=[
   'https://cdn.tailwindcss.com',
